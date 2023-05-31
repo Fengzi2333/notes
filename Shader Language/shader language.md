@@ -285,7 +285,7 @@ Shader Language，着色语言，是依赖于图形硬件的准高级语言，�
 ### Phong 模型
 
 - Phong 模型认为镜面反射的光强与反射光线和视线的夹角相关，表示为：
-  $$I_{spec}=k_{s}I_{l}(v\cdot R)^{n_{s}}$$
+  $$I_{spec}=k_{s}I_{l}(V\cdot R)^{n_{s}}$$
   其中$k_{s}$为材质的镜面反射系数，$n_{s}$是高光指数，$V$表示顶点到视点的观察方向，$R$代表反射光方向。反射光方向可以通过入射光方向和物体法向求出：
   $$
       \begin{aligned}
@@ -293,6 +293,7 @@ Shader Language，着色语言，是依赖于图形硬件的准高级语言，�
           R&=(2N\cdot L)N-L
       \end{aligned}
   $$
+
 - 示例：[vertex](./Example/SpecularVertexLevel.shader)/[pixel](./Example/SpecularPixelLevel.shader)
 
 ### Blinn-Phong 模型
@@ -305,3 +306,48 @@ Shader Language，着色语言，是依赖于图形硬件的准高级语言，�
   $$
       H=\frac{L+V}{|L+V|}
   $$
+
+### Cook-Torance 模型
+- 将物体表面看作由很多微小平面组成，每个微平面看作理想反射体，物体表面的粗糙度由微平面斜率的变换衡量
+- Cook-Torance模型将反射光分为漫反射光和镜面反射光：
+  $$
+      I_{c-t}=I_{diff}+I_{spec}=I_{diff}+k_{s}I_{l}R_{s}
+  $$  
+  Cook-Torance模型与Phong/Blinn-Phong的区别在于对$R_{s}$的描述：
+  $$
+      R_{s}=\frac{F*D*G}{(V\cdot N)*(L\cdot N)}
+  $$
+  其中$F$是菲涅尔反射系数（Fresnel reflect term），表示反射方向上光强占原始光强的比率，$D$表示微平面分布函数，表示向视角方向反射光线的微小平面所占的比例（which accounts for the fraction of facets which reflect light at the viewer），$G$是几何衰减系数，衡量微平面自身遮蔽光强的影响，$N$、$V$、$L$分别是法向量、视线方向（从顶点到视点）、入射光方向（从顶点向外）。
+  - Schlick给出了Fresnel反射系数的一个近似，其误差小于0.01：
+  $$
+      F=f_{0}+(1-f_{0})(1-V\cdot H)^{5}
+  $$
+  其中$f_0$是入射角度接近0时的fresnel反射系数
+  - 常用的分布函数是Beckmann分布函数：
+  $$
+      D=\frac{e^{-\frac{\tan^{2}\alpha}{m^{2}}}}{m^{2}\cos^{4}\alpha}
+  $$
+  其中m为粗糙度，$\alpha$是顶点法向量$N$和半角向量$H$的夹角。又有
+  $$
+      -\frac{\tan^{2}\alpha}{m^{2}}
+      =-\frac{\frac{1-\cos^{2}\alpha}{\cos^{2\alpha}}}{m^{2}}
+      =\frac{\cos^{2}\alpha}{m^{2}\cos^{2}\alpha}
+      =\frac{(N\cdot H)^{2}-1}{m^{2}(N\cdot H)^{2}}
+  $$
+  所以Beckmann微平面分布函数可以表示为：
+  $$
+      D=\frac{e^{\frac{(N\cdot H)^{2}-1}{m^{2}(N\cdot H)^{2}}}}{m^{2}(N\cdot H)^{4}}
+  $$
+  - 微平面上反射的光可能出现三种情况：
+    1. 入射光未被遮挡，此时到达观察者的光强为1
+    2. 入射光部分被遮挡
+    3. 反射光部分被遮挡 
+
+    几何衰减系数因此被定义为到达观察者的光的最小强度。所以：
+    $$
+        \begin{aligned}
+            &G=\min(1,G_{1},G_{2})\\ 
+            &G_{1}=\frac{2N\cdot H*N\cdot V}{H\cdot V}\\
+            &G_{2}=\frac{2N\cdot H*N\cdot L}{H\cdot V} \\\\
+        \end{aligned}
+    $$
